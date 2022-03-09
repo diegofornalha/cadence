@@ -349,6 +349,8 @@ func (d StorableDecoder) decodeInt() (IntValue, error) {
 }
 
 func (d StorableDecoder) decodeInt8() (Int8Value, error) {
+	common.UseMemory(d.memoryGauge, int8MemoryUsage)
+
 	v, err := d.decoder.DecodeInt64()
 	if err != nil {
 		if e, ok := err.(*cbor.WrongTypeError); ok {
@@ -368,7 +370,8 @@ func (d StorableDecoder) decodeInt8() (Int8Value, error) {
 		return 0, fmt.Errorf("invalid Int8: got %d, expected max %d", v, max)
 	}
 
-	return Int8Value(v), nil
+	// Already metered at the start of this function
+	return NewUnmeteredInt8Value(int8(v)), nil
 }
 
 func (d StorableDecoder) decodeInt16() (Int16Value, error) {
