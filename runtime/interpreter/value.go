@@ -3070,12 +3070,17 @@ func (v Int8Value) ToInt() int {
 	return int(v)
 }
 
-func (v Int8Value) Negate(*Interpreter) NumberValue {
+func (v Int8Value) Negate(interpreter *Interpreter) NumberValue {
 	// INT32-C
 	if v == math.MinInt8 {
 		panic(OverflowError{})
 	}
-	return -v
+
+	valueGetter := func() int8 {
+		return int8(-v)
+	}
+
+	return NewInt8Value(interpreter, valueGetter)
 }
 
 func (v Int8Value) Plus(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3572,6 +3577,18 @@ func (Int8Value) ChildStorables() []atree.Storable {
 
 type Int16Value int16
 
+var int16MemoryUsage = common.NewNumberMemoryUsage(int(unsafe.Sizeof(Int16Value(0))))
+
+func NewInt16Value(gauge common.MemoryGauge, valueGetter func() int16) Int16Value {
+	common.UseMemory(gauge, int16MemoryUsage)
+
+	return NewUnmeteredInt16Value(valueGetter())
+}
+
+func NewUnmeteredInt16Value(value int16) Int16Value {
+	return Int16Value(value)
+}
+
 var _ Value = Int16Value(0)
 var _ atree.Storable = Int16Value(0)
 var _ NumberValue = Int16Value(0)
@@ -3612,12 +3629,17 @@ func (v Int16Value) ToInt() int {
 	return int(v)
 }
 
-func (v Int16Value) Negate(*Interpreter) NumberValue {
+func (v Int16Value) Negate(interpreter *Interpreter) NumberValue {
 	// INT32-C
 	if v == math.MinInt16 {
 		panic(OverflowError{})
 	}
-	return -v
+
+	valueGetter := func() int16 {
+		return int16(-v)
+	}
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) Plus(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3636,7 +3658,12 @@ func (v Int16Value) Plus(interpreter *Interpreter, other NumberValue) NumberValu
 	} else if (o < 0) && (v < (math.MinInt16 - o)) {
 		panic(UnderflowError{})
 	}
-	return v + o
+
+	valueGetter := func() int16 {
+		return int16(v + o)
+	}
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) SaturatingPlus(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3649,13 +3676,17 @@ func (v Int16Value) SaturatingPlus(interpreter *Interpreter, other NumberValue) 
 		})
 	}
 
-	// INT32-C
-	if (o > 0) && (v > (math.MaxInt16 - o)) {
-		return Int16Value(math.MaxInt16)
-	} else if (o < 0) && (v < (math.MinInt16 - o)) {
-		return Int16Value(math.MinInt16)
+	valueGetter := func() int16 {
+		// INT32-C
+		if (o > 0) && (v > (math.MaxInt16 - o)) {
+			return math.MaxInt16
+		} else if (o < 0) && (v < (math.MinInt16 - o)) {
+			return math.MinInt16
+		}
+		return int16(v + o)
 	}
-	return v + o
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) Minus(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3674,7 +3705,12 @@ func (v Int16Value) Minus(interpreter *Interpreter, other NumberValue) NumberVal
 	} else if (o < 0) && (v > (math.MaxInt16 + o)) {
 		panic(UnderflowError{})
 	}
-	return v - o
+
+	valueGetter := func() int16 {
+		return int16(v - o)
+	}
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) SaturatingMinus(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3687,13 +3723,17 @@ func (v Int16Value) SaturatingMinus(interpreter *Interpreter, other NumberValue)
 		})
 	}
 
-	// INT32-C
-	if (o > 0) && (v < (math.MinInt16 + o)) {
-		return Int16Value(math.MinInt16)
-	} else if (o < 0) && (v > (math.MaxInt16 + o)) {
-		return Int16Value(math.MaxInt16)
+	valueGetter := func() int16 {
+		// INT32-C
+		if (o > 0) && (v < (math.MinInt16 + o)) {
+			return math.MinInt16
+		} else if (o < 0) && (v > (math.MaxInt16 + o)) {
+			return math.MaxInt16
+		}
+		return int16(v - o)
 	}
-	return v - o
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) Mod(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3710,7 +3750,12 @@ func (v Int16Value) Mod(interpreter *Interpreter, other NumberValue) NumberValue
 	if o == 0 {
 		panic(DivisionByZeroError{})
 	}
-	return v % o
+
+	valueGetter := func() int16 {
+		return int16(v % o)
+	}
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) Mul(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3749,7 +3794,12 @@ func (v Int16Value) Mul(interpreter *Interpreter, other NumberValue) NumberValue
 			}
 		}
 	}
-	return v * o
+
+	valueGetter := func() int16 {
+		return int16(v * o)
+	}
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) SaturatingMul(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3762,33 +3812,37 @@ func (v Int16Value) SaturatingMul(interpreter *Interpreter, other NumberValue) N
 		})
 	}
 
-	// INT32-C
-	if v > 0 {
-		if o > 0 {
-			// positive * positive = positive. overflow?
-			if v > (math.MaxInt16 / o) {
-				return Int16Value(math.MaxInt16)
+	valueGetter := func() int16 {
+		// INT32-C
+		if v > 0 {
+			if o > 0 {
+				// positive * positive = positive. overflow?
+				if v > (math.MaxInt16 / o) {
+					return math.MaxInt16
+				}
+			} else {
+				// positive * negative = negative. underflow?
+				if o < (math.MinInt16 / v) {
+					return math.MinInt16
+				}
 			}
 		} else {
-			// positive * negative = negative. underflow?
-			if o < (math.MinInt16 / v) {
-				return Int16Value(math.MinInt16)
+			if o > 0 {
+				// negative * positive = negative. underflow?
+				if v < (math.MinInt16 / o) {
+					return math.MinInt16
+				}
+			} else {
+				// negative * negative = positive. overflow?
+				if (v != 0) && (o < (math.MaxInt16 / v)) {
+					return math.MaxInt16
+				}
 			}
 		}
-	} else {
-		if o > 0 {
-			// negative * positive = negative. underflow?
-			if v < (math.MinInt16 / o) {
-				return Int16Value(math.MinInt16)
-			}
-		} else {
-			// negative * negative = positive. overflow?
-			if (v != 0) && (o < (math.MaxInt16 / v)) {
-				return Int16Value(math.MaxInt16)
-			}
-		}
+		return int16(v * o)
 	}
-	return v * o
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) Div(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3808,7 +3862,12 @@ func (v Int16Value) Div(interpreter *Interpreter, other NumberValue) NumberValue
 	} else if (v == math.MinInt16) && (o == -1) {
 		panic(OverflowError{})
 	}
-	return v / o
+
+	valueGetter := func() int16 {
+		return int16(v / o)
+	}
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) SaturatingDiv(interpreter *Interpreter, other NumberValue) NumberValue {
@@ -3821,14 +3880,18 @@ func (v Int16Value) SaturatingDiv(interpreter *Interpreter, other NumberValue) N
 		})
 	}
 
-	// INT33-C
-	// https://golang.org/ref/spec#Integer_operators
-	if o == 0 {
-		panic(DivisionByZeroError{})
-	} else if (v == math.MinInt16) && (o == -1) {
-		return Int16Value(math.MaxInt16)
+	valueGetter := func() int16 {
+		// INT33-C
+		// https://golang.org/ref/spec#Integer_operators
+		if o == 0 {
+			panic(DivisionByZeroError{})
+		} else if (v == math.MinInt16) && (o == -1) {
+			return math.MaxInt16
+		}
+		return int16(v / o)
 	}
-	return v / o
+
+	return NewInt16Value(interpreter, valueGetter)
 }
 
 func (v Int16Value) Less(other NumberValue) BoolValue {
@@ -3900,33 +3963,34 @@ func (v Int16Value) HashInput(_ *Interpreter, _ func() LocationRange, scratch []
 	return scratch[:3]
 }
 
-func ConvertInt16(value Value) Int16Value {
-	var res int16
+func ConvertInt16(memoryGauge common.MemoryGauge, value Value) Int16Value {
+	converter := func() int16 {
 
-	switch value := value.(type) {
-	case BigNumberValue:
-		v := value.ToBigInt()
-		if v.Cmp(sema.Int16TypeMaxInt) > 0 {
-			panic(OverflowError{})
-		} else if v.Cmp(sema.Int16TypeMinInt) < 0 {
-			panic(UnderflowError{})
+		switch value := value.(type) {
+		case BigNumberValue:
+			v := value.ToBigInt()
+			if v.Cmp(sema.Int16TypeMaxInt) > 0 {
+				panic(OverflowError{})
+			} else if v.Cmp(sema.Int16TypeMinInt) < 0 {
+				panic(UnderflowError{})
+			}
+			return int16(v.Int64())
+
+		case NumberValue:
+			v := value.ToInt()
+			if v > math.MaxInt16 {
+				panic(OverflowError{})
+			} else if v < math.MinInt16 {
+				panic(UnderflowError{})
+			}
+			return int16(v)
+
+		default:
+			panic(errors.NewUnreachableError())
 		}
-		res = int16(v.Int64())
-
-	case NumberValue:
-		v := value.ToInt()
-		if v > math.MaxInt16 {
-			panic(OverflowError{})
-		} else if v < math.MinInt16 {
-			panic(UnderflowError{})
-		}
-		res = int16(v)
-
-	default:
-		panic(errors.NewUnreachableError())
 	}
 
-	return Int16Value(res)
+	return NewInt16Value(memoryGauge, converter)
 }
 
 func (v Int16Value) BitwiseOr(other IntegerValue) IntegerValue {
