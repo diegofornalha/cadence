@@ -426,6 +426,8 @@ func (d StorableDecoder) decodeInt32() (Int32Value, error) {
 }
 
 func (d StorableDecoder) decodeInt64() (Int64Value, error) {
+	common.UseMemory(d.memoryGauge, int64MemoryUsage)
+
 	v, err := d.decoder.DecodeInt64()
 	if err != nil {
 		if e, ok := err.(*cbor.WrongTypeError); ok {
@@ -434,7 +436,8 @@ func (d StorableDecoder) decodeInt64() (Int64Value, error) {
 		return 0, err
 	}
 
-	return Int64Value(v), nil
+	// Already metered at the start of this function
+	return NewUnmeteredInt64Value(v), nil
 }
 
 func (d StorableDecoder) decodeInt128() (Int128Value, error) {
